@@ -1,0 +1,136 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Error - {{ filename }}</title>
+    <style>
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+            max-width: 800px;
+            margin: 0 auto;
+            padding: 20px;
+            background-color: #f8f9fa;
+            color: #333;
+        }
+        
+        .error-container {
+            background: #fff;
+            padding: 30px;
+            border-radius: 10px;
+            box-shadow: 0 2px 4px rgba(0,0,0,0.1);
+            text-align: center;
+        }
+        
+        .error-icon {
+            font-size: 64px;
+            margin-bottom: 20px;
+        }
+        
+        h1 {
+            color: #e74c3c;
+            margin-bottom: 20px;
+        }
+        
+        .error-message {
+            background: #fee;
+            border: 1px solid #e74c3c;
+            border-radius: 8px;
+            padding: 15px;
+            color: #e74c3c;
+            margin-bottom: 20px;
+            text-align: left;
+        }
+        
+        .filename {
+            font-family: monospace;
+            background: #f8f9fa;
+            padding: 5px 10px;
+            border-radius: 4px;
+            color: #2c3e50;
+        }
+        
+        .actions {
+            margin-top: 30px;
+            display: flex;
+            gap: 15px;
+            justify-content: center;
+            flex-wrap: wrap;
+        }
+        
+        .btn {
+            padding: 10px 20px;
+            border: none;
+            border-radius: 5px;
+            text-decoration: none;
+            font-size: 14px;
+            cursor: pointer;
+            transition: all 0.2s;
+            display: inline-block;
+        }
+        
+        .btn-primary {
+            background: #3498db;
+            color: white;
+        }
+        
+        .btn-primary:hover {
+            background: #2980b9;
+        }
+        
+        .btn-secondary {
+            background: #95a5a6;
+            color: white;
+        }
+        
+        .btn-secondary:hover {
+            background: #7f8c8d;
+        }
+        
+        .breadcrumb {
+            margin-bottom: 20px;
+        }
+        
+        .breadcrumb a {
+            color: #3498db;
+            text-decoration: none;
+        }
+        
+        .breadcrumb a:hover {
+            text-decoration: underline;
+        }
+    </style>
+</head>
+<body>
+    <div class="breadcrumb">
+        <a href="{{ url_for('index') }}">← Back to Reviews</a>
+    </div>
+    
+    <div class="error-container">
+        <div class="error-icon">❌</div>
+        
+        <h1>Error Loading File</h1>
+        
+        <p>There was an error loading the file:</p>
+        <div class="filename">{{ filename }}</div>
+        
+        <div class="error-message">
+            <strong>Error Details:</strong><br>
+            {{ error }}
+        </div>
+        
+        <p>This could be due to:</p>
+        <ul style="text-align: left; display: inline-block;">
+            <li>Invalid JSON format in the file</li>
+            <li>File is corrupted or incomplete</li>
+            <li>File encoding issues</li>
+            <li>File permissions problems</li>
+        </ul>
+        
+        <div class="actions">
+            <a href="{{ url_for('index') }}" class="btn btn-primary">← Back to List</a>
+            <a href="{{ url_for('raw_file', filename=filename) }}" class="btn btn-secondary">📄 Try Raw View</a>
+        </div>
+    </div>
+</body>
+</html> 

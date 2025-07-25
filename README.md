@@ -54,7 +54,7 @@ python run_review.py --approach one-shot
 # EXHAUSTIVE MODE: Discover and review ALL pages on the site
 python run_review.py --exhaustive
 
-# Exhaustive with one-shot approach (review all pages in one task)
+# Exhaustive with one-shot: AI organically explores entire site in single task  
 python run_review.py --exhaustive --approach one-shot
 
 # Review a custom site with specific settings
@@ -91,9 +91,11 @@ Choose between two analysis methods:
 - **Pros**: Detailed per-page insights, handles large sites better, more reliable
 - **Cons**: Takes longer, more API calls
 
-### 🕷️ Exhaustive Mode (Web Crawling)
+### 🕷️ Exhaustive Mode (Complete Site Analysis)
 - **Best for**: Complete site analysis, finding all documentation gaps
-- **How it works**: Recursively discovers ALL pages by crawling the entire site, then reviews everything
+- **Two sub-modes**:
+  - **🚀 One-Shot**: AI organically explores and reviews entire site in single task
+  - **🔄 Multi-Step**: Pre-crawls to discover pages, then reviews each individually
 - **Pros**: Finds every single page, comprehensive coverage analysis, identifies missing documentation
 - **Cons**: Takes much longer, uses many more API calls, may hit safety limits on very large sites
 
@@ -173,8 +175,11 @@ python run_review.py https://docs.example.com --approach one-shot
 # Limit pages and use multi-step approach
 python run_review.py https://docs.example.com --max-pages 20 --approach multi-step
 
-# EXHAUSTIVE: Discover and review ALL pages (web crawling)
+# EXHAUSTIVE: Multi-step crawling (discover all pages first, then review each)
 python run_review.py https://docs.example.com --exhaustive
+
+# EXHAUSTIVE: One-shot organic exploration (AI discovers and reviews in one task)
+python run_review.py https://docs.example.com --exhaustive --approach one-shot
 
 # Exhaustive with safety limit (stops after finding 50 pages)
 python run_review.py https://docs.example.com --exhaustive --max-pages 50
@@ -225,6 +230,65 @@ The tool generates:
 1. **Individual Page Reviews**: Detailed analysis of each page with scores and recommendations
 2. **Overall Site Review**: Comprehensive site-wide analysis and strategic recommendations
 3. **JSON Report**: Machine-readable output saved to `documentation_review_[timestamp].json`
+
+## 🌐 Web Viewer (Pretty HTML Reports)
+
+View your review results in a beautiful, interactive web interface! The included web app displays your JSON reports in a clean, navigable format.
+
+### Start the Web Viewer
+
+```bash
+# Easy way (automatically opens browser)
+python view_results.py
+
+# Or start manually
+python app.py
+```
+
+Then open your browser to: **http://localhost:5002**
+
+### Features
+
+- 📂 **File Browser**: Automatically discovers all review JSON files
+- 📊 **Rich Summaries**: Shows key metrics, scores, and metadata for each review
+- 🎨 **Pretty Formatting**: Clean, modern interface with color-coded scores
+- 📱 **Responsive Design**: Works on desktop and mobile
+- 🔍 **Detailed Views**: Click any file to see comprehensive, formatted results
+- 📄 **Raw JSON Access**: Option to view original JSON data
+- 🏷️ **Smart Tagging**: Visual badges for review approach and status
+- ⚡ **Fast Navigation**: Easy browsing between different review reports
+- 📸 **Media Gallery**: Beautiful display of automation screenshots and recordings
+- 🎬 **Automation Artifacts**: View GIFs, screenshots, and files from browser automation
+- 🖼️ **Lightbox Viewer**: Click screenshots for full-size viewing
+- 📥 **File Downloads**: Download any captured media or generated files
+
+### What You'll See
+
+- **Overview Dashboard**: All your review files with quick stats
+- **Detailed Page Analysis**: Individual page scores and feedback
+- **Site-Wide Insights**: Overall analysis and recommendations  
+- **Score Visualizations**: Color-coded metrics (🟢 Good, 🟡 Medium, 🔴 Needs Work)
+- **Media Gallery**: Screenshots and recordings from browser automation
+- **AI-Generated Content**: Enhanced analysis saved by the AI agent
+- **Collapsible Sections**: Organize content for easy reading
+- **Interactive Elements**: Lightbox image viewer, expandable sections
+
+The web interface makes it easy to:
+- Compare different review runs
+- Share results with team members  
+- Identify patterns across multiple sites
+- Track improvements over time
+
+### Screenshots & Media
+
+The web viewer displays:
+- Clean file listing with metadata and scores
+- Detailed page-by-page analysis with color-coded ratings
+- Beautiful media gallery with automation screenshots and GIFs
+- Interactive lightbox for viewing images in full size
+- AI-generated analysis sections with enhanced insights
+- Site-wide recommendations and strategic analysis
+- Raw JSON data (collapsible for technical users)
 
 ### Sample Output
 

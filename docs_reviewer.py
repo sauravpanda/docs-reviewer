@@ -35,7 +35,7 @@ class DocumentationReviewer:
             "Content-Type": "application/json"
         })
     
-    async def review_documentation_site(self, start_url: str, max_pages: int = 20, approach: str = "multi-step", exhaustive: bool = False) -> Dict:
+    async def review_documentation_site(self, start_url: str, max_pages: int = 50, approach: str = "multi-step", exhaustive: bool = False) -> Dict:
         """
         Review an entire documentation site starting from the given URL.
         
@@ -50,16 +50,28 @@ class DocumentationReviewer:
         """
         print(f"Starting documentation review for: {start_url}")
         print(f"Using {approach} approach")
-        if exhaustive:
-            print("🔍 EXHAUSTIVE MODE: Will discover and review ALL pages on the site")
+        
+        if exhaustive and approach == "one-shot":
+            print("🚀 ONE-SHOT EXHAUSTIVE: AI will discover and review ALL pages in single task")
+            print("⚠️  May take longer due to comprehensive site exploration")
+            print(f"🛡️  Safety limit: {max_pages} pages maximum")
+        elif exhaustive:
+            print("🕷️  MULTI-STEP EXHAUSTIVE: Will crawl to discover ALL pages, then review each")
             print("⚠️  This may take significantly longer and use more API calls")
+            print(f"🛡️  Safety limit: {max_pages} pages maximum")
         else:
             print(f"📊 Max pages: {max_pages}")
+            
         print("⏱️  Note: Tasks can take up to 15 minutes to complete")
         print("🔗 Public share URLs will be displayed to watch automation live")
         print("="*50)
         
-        if exhaustive:
+        if exhaustive and approach == "one-shot":
+            # True one-shot exhaustive: AI does everything in one task
+            print("🚀 One-shot exhaustive: AI will discover and review all pages in one task")
+            return await self._one_shot_true_exhaustive_review(start_url, max_pages)
+        elif exhaustive:
+            # Multi-step exhaustive: crawl first, then review each page
             return await self._exhaustive_review(start_url, approach, max_pages)
         elif approach == "one-shot":
             return await self._one_shot_review(start_url, max_pages)
@@ -131,13 +143,8 @@ class DocumentationReviewer:
         # Review phase: Review all discovered pages
         print(f"\n📊 Phase 2: Reviewing all {len(all_links)} discovered pages")
         
-        if approach == "one-shot":
-            # For one-shot exhaustive, skip crawling and let AI discover everything
-            print("🚀 One-shot mode: AI will discover and review all pages in one task")
-            return await self._one_shot_true_exhaustive_review(start_url, safety_limit)
-        else:
-            # For multi-step, review each discovered page individually
-            return await self._multi_step_exhaustive_review(start_url, all_links)
+        # Multi-step exhaustive: review each discovered page individually
+        return await self._multi_step_exhaustive_review(start_url, all_links)
     
     def _is_documentation_url(self, url: str) -> bool:
         """Check if a URL looks like a documentation page (not images, downloads, etc.)."""
@@ -167,29 +174,30 @@ class DocumentationReviewer:
         """True one-shot exhaustive review: AI discovers and reviews everything in one task."""
         
         task_description = f"""
-        You are an expert documentation reviewer. Perform a COMPLETE EXHAUSTIVE review of the documentation website starting at {start_url}.
+        TASK: Review the ENTIRE documentation website at {start_url}. You must visit multiple pages and review each one.
 
-        COMPREHENSIVE EXHAUSTIVE TASK:
-        1. Start at {start_url}
-        2. DISCOVER ALL documentation pages by thoroughly exploring:
-           - Main navigation (expand all dropdowns/menus)
-           - Sidebar navigation (expand all collapsible sections)
-           - Footer links
-           - Breadcrumb navigation
-           - Table of contents
-           - "See also" and related sections
-           - Any hidden or nested navigation
-        3. Visit and analyze EVERY documentation page you find (up to {max_pages_limit} pages max for safety)
-        4. For each page, evaluate content quality, structure, UX, and technical accuracy
-        5. Look for site-wide patterns, consistency issues, and navigation problems
-        6. Identify missing documentation, broken links, and gaps in coverage
+        STEP-BY-STEP INSTRUCTIONS:
+        1. Go to {start_url}
+        2. Read the page content thoroughly
+        3. Review this page: rate content quality (1-10), structure (1-10), UX (1-10), technical accuracy (1-10)
+        4. Look for navigation links to OTHER documentation pages
+        5. Click on a documentation link to go to the next page
+        6. Read and review this new page the same way
+        7. Repeat: find more links, visit more pages, review each page
+        8. Continue until you've reviewed at least 10+ documentation pages
 
-        DISCOVERY GUIDELINES:
-        - Be thorough! Click on navigation elements to reveal hidden links
-        - Include all types of documentation: guides, tutorials, API docs, examples, references
-        - Stay within the same domain ({urlparse(start_url).netloc})
-        - Skip non-documentation content (images, downloads, assets)
-        - Aim to find and review 20-50+ pages if they exist
+        WHAT TO REVIEW FOR EACH PAGE:
+        - Content clarity and usefulness
+        - Page structure and organization
+        - Navigation and user experience
+        - Technical accuracy of information
+        - Give each page an overall score 1-10
+
+        IMPORTANT: 
+        - Actually NAVIGATE to multiple pages (don't just stay on the first page)
+        - REVIEW each page you visit
+        - Look for links in: main navigation, sidebar, footer, "next" buttons
+        - Stay on the same domain: {urlparse(start_url).netloc}
 
         SCORING CRITERIA (1-10 for each):
         - Content Quality: Clarity, completeness, accuracy, examples
@@ -197,90 +205,58 @@ class DocumentationReviewer:
         - User Experience: Navigation, search, mobile, performance
         - Technical Accuracy: Code examples, API docs, implementation details
 
-        EXHAUSTIVE OUTPUT FORMAT:
-        Return a comprehensive JSON report documenting your COMPLETE site analysis:
-        {{
-            "start_url": "{start_url}",
-            "review_approach": "exhaustive_one_shot",
-            "discovery_method": "ai_comprehensive_crawling",
-            "total_pages_discovered": <actual_number_found>,
-            "total_pages_reviewed": <actual_number_reviewed>,
-            "page_reviews": [
-                {{
-                    "url": "full_page_url",
-                    "title": "Page Title",
-                    "page_type": "guide|tutorial|api|reference|example",
-                    "scores": {{
-                        "overall": <1-10>,
-                        "content_quality": <1-10>,
-                        "structure_organization": <1-10>,
-                        "user_experience": <1-10>,
-                        "technical_accuracy": <1-10>
-                    }},
-                    "feedback": {{
-                        "content_quality": "specific detailed feedback...",
-                        "structure_organization": "specific detailed feedback...",
-                        "user_experience": "specific detailed feedback...",
-                        "technical_accuracy": "specific detailed feedback..."
-                    }},
-                    "critical_issues": ["specific issue 1", "specific issue 2"],
-                    "recommendations": ["specific rec 1", "specific rec 2"],
-                    "positive_aspects": ["specific positive 1", "specific positive 2"]
-                }}
-            ],
-            "site_analysis": {{
-                "coverage_analysis": {{
-                    "documentation_completeness": "assessment of how complete the docs are",
-                    "missing_topics": ["topic 1", "topic 2"],
-                    "coverage_gaps": ["gap 1", "gap 2"]
-                }},
-                "navigation_analysis": {{
-                    "main_navigation_effectiveness": "assessment...",
-                    "search_functionality": "assessment...",
-                    "information_architecture": "assessment..."
-                }},
-                "content_analysis": {{
-                    "writing_quality_consistency": "assessment...",
-                    "technical_accuracy_patterns": "assessment...",
-                    "example_quality": "assessment..."
-                }},
-                "average_score": <calculated_average>,
-                "score_distribution": {{
-                    "excellent (8-10)": <count>,
-                    "good (6-7)": <count>,
-                    "needs_improvement (4-5)": <count>,
-                    "poor (1-3)": <count>
-                }},
-                "site_strengths": ["strength 1", "strength 2", "strength 3"],
-                "critical_site_issues": ["critical issue 1", "critical issue 2"],
-                "strategic_recommendations": {{
-                    "immediate_fixes": ["fix 1", "fix 2"],
-                    "short_term_improvements": ["improvement 1", "improvement 2"],
-                    "long_term_strategy": ["strategy 1", "strategy 2"]
-                }},
-                "competitive_assessment": "how this documentation compares to industry standards",
-                "overall_assessment": "comprehensive strategic assessment and roadmap"
-            }}
-        }}
+        IMPORTANT: Save your complete analysis to a file named "review_results.json" with all the detailed results.
 
-        CRITICAL REQUIREMENTS:
-        - Discover and review AT LEAST 10-20 pages (more if they exist)
-        - Be exhaustive in your discovery - don't miss hidden navigation
-        - Provide detailed, actionable feedback for each page
-        - Focus on comprehensive site-wide analysis
-        - Ensure all JSON fields are properly filled
-        - Maximum {max_pages_limit} pages for safety (stop if you hit this limit)
+                 OUTPUT REQUIRED - Return this exact JSON format AND save to review_results.json:
+         {{
+             "total_pages_reviewed": <number of pages you actually visited and reviewed>,
+             "page_reviews": [
+                 {{
+                     "url": "exact page URL",
+                     "title": "page title you found",
+                     "scores": {{
+                         "overall": <1-10>,
+                         "content_quality": <1-10>,
+                         "structure_organization": <1-10>,
+                         "user_experience": <1-10>,
+                         "technical_accuracy": <1-10>
+                     }},
+                     "feedback": "Your detailed review of this page",
+                     "critical_issues": ["issue 1", "issue 2"],
+                     "recommendations": ["recommendation 1", "recommendation 2"]
+                 }}
+             ],
+             "site_analysis": {{
+                 "average_score": <calculated average of all page scores>,
+                 "total_pages_discovered": <number of pages you found>,
+                 "site_strengths": ["strength 1", "strength 2"],
+                 "critical_site_issues": ["issue 1", "issue 2"],
+                 "overall_assessment": "Your overall assessment of the documentation site"
+             }}
+         }}
 
-        SUCCESS CRITERIA: Find and analyze the COMPLETE documentation site, not just a few pages.
+                          CRITICAL REQUIREMENTS:
+         - You MUST visit and review at least 5-10 different documentation pages
+         - Actually CLICK on links to navigate to other pages  
+         - Don't just stay on the first page - explore the documentation
+         - Return valid JSON with the exact format above
+         - Fill in ALL the fields in the JSON
+         - Make sure "total_pages_reviewed" matches the number of pages in "page_reviews"
+
+         EXAMPLE: Visit pages like /introduction, /quickstart, /api-reference, /guides, etc.
         """
         
         try:
             print(f"🚀 Starting true exhaustive one-shot review (max {max_pages_limit} pages)...")
             result = await self._run_browser_task(
                 task_description, 
-                max_steps=250,  # More steps for comprehensive discovery and review
+                max_steps=200,  # More steps for comprehensive discovery and review
                 output_format="json"
             )
+            
+            print(f"🔍 Debug: Raw result type: {type(result)}")
+            print(f"🔍 Debug: Raw result keys: {list(result.keys()) if isinstance(result, dict) else 'Not a dict'}")
+            print(f"🔍 Debug: Raw result preview: {str(result)[:500]}...")
             
             if result:
                 result["review_approach"] = "exhaustive_one_shot"
@@ -292,6 +268,7 @@ class DocumentationReviewer:
                     result["total_pages_discovered"] = result.get("total_pages_reviewed", 1)
                 return result
             else:
+                print("❌ No result returned from AI task")
                 return {
                     "error": "True exhaustive one-shot review failed - no result returned",
                     "review_approach": "exhaustive_one_shot",
@@ -487,8 +464,10 @@ class DocumentationReviewer:
         - User Experience (1-10): Navigation, search, breadcrumbs, mobile responsiveness
         - Technical Accuracy (1-10): Code examples, API docs, implementation details
 
+        IMPORTANT: Save your complete analysis to a file named "review_results.json" with all the detailed results.
+
         OUTPUT FORMAT:
-        Return a comprehensive JSON report with this structure:
+        Return a comprehensive JSON report with this structure AND save to review_results.json:
         {{
             "start_url": "{start_url}",
             "review_approach": "one-shot",
@@ -537,6 +516,7 @@ class DocumentationReviewer:
         - Provide constructive, actionable feedback
         - Be critical but fair in your assessments
         - Ensure JSON output is valid and properly formatted
+        - Save complete results to "review_results.json" file
         - Limit to {max_pages} pages maximum to stay within step limits
         """
         
@@ -977,7 +957,7 @@ class DocumentationReviewer:
         SAMPLE PAGE SCORES (first 20):
         {[{"url": r.get("url", ""), "title": r.get("title", ""), "score": r.get("scores", {}).get("overall", 0)} for r in page_reviews[:20]]}
 
-        Provide a STRATEGIC ANALYSIS for this COMPLETE documentation site in JSON format:
+        Provide a STRATEGIC ANALYSIS for this COMPLETE documentation site in JSON format. store all the results in filenamed review_results.json:
         {{
             "coverage_analysis": {{
                 "total_pages_discovered": {total_discovered},
@@ -1058,8 +1038,9 @@ class DocumentationReviewer:
             "max_agent_steps": max_steps,
             "use_adblock": True,
             "use_proxy": True,
-            "highlight_elements": False,
+            "highlight_elements": True,
             "enable_public_share": True,  # Enable public sharing to view automation
+            "browser_profile": "default",
         }
         
         # Create task
@@ -1090,7 +1071,7 @@ class DocumentationReviewer:
             print(f"    🔗 Task ID: {task_id} (share URLs will be available once task starts)")
         
         # Poll for completion
-        max_wait_time = 900  # 15 minutes max
+        max_wait_time = 3600  # 1 hour max
         wait_interval = 15  # Check every 15 seconds
         elapsed_time = 0
         
@@ -1125,17 +1106,32 @@ class DocumentationReviewer:
                 if not task_details:
                     return {"error": "Could not retrieve task details after completion"}
                 
+                # Download all available files from the task
+                try:
+                    downloaded_files = await self.download_all_task_files(task_id)
+                except Exception as e:
+                    print(f"    ⚠️ Error downloading task files: {e}")
+                    downloaded_files = {}
+                
                 # First try to get output from the task data itself
                 if task_details.get("output"):
                     try:
                         if isinstance(task_details["output"], str):
                             # Try to parse as JSON first
-                            return json.loads(task_details["output"])
+                            result = json.loads(task_details["output"])
                         else:
-                            return task_details["output"]
+                            result = task_details["output"]
+                        
+                        # Add downloaded files info to result
+                        if downloaded_files:
+                            result["downloaded_files"] = downloaded_files
+                        return result
                     except json.JSONDecodeError:
                         # If not valid JSON, try to extract JSON from the text
-                        return self._extract_json_from_text(str(task_details["output"]))
+                        result = self._extract_json_from_text(str(task_details["output"]))
+                        if downloaded_files:
+                            result["downloaded_files"] = downloaded_files
+                        return result
                 
                 # Try to get output file
                 output_response = self.session.get(f"{self.api_base_url}/get-task-output-file/{task_id}")
@@ -1143,18 +1139,29 @@ class DocumentationReviewer:
                 if output_response.status_code == 200:
                     try:
                         result = output_response.json()
+                        if downloaded_files:
+                            result["downloaded_files"] = downloaded_files
                         return result
                     except json.JSONDecodeError:
                         # Try to extract JSON from text response
-                        return self._extract_json_from_text(output_response.text)
+                        result = self._extract_json_from_text(output_response.text)
+                        if downloaded_files:
+                            result["downloaded_files"] = downloaded_files
+                        return result
                 
                 # If no output available but task is done
                 if status == "stopped":
                     print("    ⚠️ Task was stopped - may have partial results")
-                    return {"warning": "Task was stopped before completion", "partial_result": True}
+                    result = {"warning": "Task was stopped before completion", "partial_result": True}
+                    if downloaded_files:
+                        result["downloaded_files"] = downloaded_files
+                    return result
                 
                 # Fallback to any available data
-                return task_details.get("result", {"message": f"Task {status} but no output available"})
+                result = task_details.get("result", {"message": f"Task {status} but no output available"})
+                if downloaded_files:
+                    result["downloaded_files"] = downloaded_files
+                return result
             
             elif status == "failed":
                 # Get full task details to see error message
@@ -1167,6 +1174,327 @@ class DocumentationReviewer:
             elapsed_time += wait_interval
         
         raise Exception(f"Task timed out after {max_wait_time} seconds")
+    
+    def check_and_display_results_file(self):
+        """Check for review_results.json file and display its contents if it exists."""
+        results_file = "review_results.json"
+        
+        if os.path.exists(results_file):
+            print(f"\n🎯 Found output file: {results_file}")
+            print("="*60)
+            
+            try:
+                with open(results_file, 'r', encoding='utf-8') as f:
+                    file_content = json.load(f)
+                
+                print("📋 Contents of review_results.json:")
+                print(json.dumps(file_content, indent=2, ensure_ascii=False))
+                print("="*60)
+                
+                return file_content
+                
+            except json.JSONDecodeError as e:
+                print(f"❌ Error parsing JSON file: {e}")
+                try:
+                    with open(results_file, 'r', encoding='utf-8') as f:
+                        raw_content = f.read()
+                    print("📄 Raw file contents:")
+                    print(raw_content)
+                    print("="*60)
+                except Exception as read_error:
+                    print(f"❌ Error reading file: {read_error}")
+                    
+            except Exception as e:
+                print(f"❌ Error reading {results_file}: {e}")
+        else:
+            print(f"\n📄 No {results_file} file found in current directory")
+            
+        return None
+    
+    def merge_results_with_file(self, results: Dict) -> Dict:
+        """Merge the main results with review_results.json file if it exists."""
+        results_file = "review_results.json"
+        
+        # Also check for the file in downloaded files
+        downloaded_files = results.get("downloaded_files", {})
+        review_file_path = None
+        
+        # Look for review_results.json in multiple locations
+        if os.path.exists(results_file):
+            review_file_path = results_file
+        else:
+            # Check in downloaded files
+            for file_type, filepath in downloaded_files.items():
+                if "review_results.json" in filepath:
+                    if os.path.exists(filepath):
+                        review_file_path = filepath
+                        break
+        
+        if review_file_path:
+            try:
+                with open(review_file_path, 'r', encoding='utf-8') as f:
+                    file_content = json.load(f)
+                
+                print(f"\n🔗 Merging results from {review_file_path}")
+                
+                # Merge the file content into the results
+                # Prioritize file content for detailed analysis while keeping main results structure
+                merged_results = results.copy()
+                
+                # Add file content as a special section
+                merged_results["ai_generated_file"] = file_content
+                
+                # Try to merge key fields intelligently
+                if isinstance(file_content, dict):
+                    # PRIORITY: Use page reviews from file if they exist and are comprehensive
+                    if "page_reviews" in file_content and isinstance(file_content["page_reviews"], list):
+                        if len(file_content["page_reviews"]) > len(merged_results.get("page_reviews", [])):
+                            # File has more comprehensive page reviews, use those
+                            merged_results["page_reviews"] = file_content["page_reviews"]
+                            print(f"✅ Using {len(file_content['page_reviews'])} page reviews from AI file")
+                        else:
+                            # Merge both sets
+                            if "page_reviews" not in merged_results:
+                                merged_results["page_reviews"] = []
+                            
+                            existing_urls = {page.get("url") for page in merged_results.get("page_reviews", [])}
+                            for page_review in file_content["page_reviews"]:
+                                if page_review.get("url") not in existing_urls:
+                                    merged_results["page_reviews"].append(page_review)
+                    
+                    # Merge site analysis if available
+                    if "site_analysis" in file_content:
+                        merged_results["enhanced_site_analysis"] = file_content["site_analysis"]
+                        # Also copy to overall_review if it doesn't exist
+                        if "overall_review" not in merged_results:
+                            merged_results["overall_review"] = file_content["site_analysis"]
+                    
+                    # PRIORITY: Use totals from file if they're higher (more accurate)
+                    if "total_pages_reviewed" in file_content and file_content["total_pages_reviewed"]:
+                        current_total = merged_results.get("total_pages_reviewed", 0)
+                        file_total = file_content["total_pages_reviewed"]
+                        if file_total > current_total:
+                            merged_results["total_pages_reviewed"] = file_total
+                            print(f"✅ Updated total_pages_reviewed from {current_total} to {file_total}")
+                    
+                    if "total_pages_discovered" in file_content and file_content["total_pages_discovered"]:
+                        current_total = merged_results.get("total_pages_discovered", 0)
+                        file_total = file_content["total_pages_discovered"]
+                        if file_total > current_total:
+                            merged_results["total_pages_discovered"] = file_total
+                            print(f"✅ Updated total_pages_discovered from {current_total} to {file_total}")
+                    
+                    # Add any additional analysis from the file
+                    for key, value in file_content.items():
+                        if key not in merged_results and key not in ["page_reviews", "site_analysis"]:
+                            merged_results[f"ai_file_{key}"] = value
+                
+                merged_results["has_ai_generated_file"] = True
+                print(f"✅ Successfully merged data from {review_file_path}")
+                return merged_results
+                
+            except json.JSONDecodeError as e:
+                print(f"⚠️ Could not parse {review_file_path}: {e}")
+                results["ai_file_error"] = f"JSON parsing error: {str(e)}"
+                return results
+            except Exception as e:
+                print(f"⚠️ Error reading {review_file_path}: {e}")
+                results["ai_file_error"] = f"File reading error: {str(e)}"
+                return results
+        else:
+            print(f"\n📄 No review_results.json file found - using standard results")
+            results["has_ai_generated_file"] = False
+            return results
+    
+    async def download_all_task_files(self, task_id: str) -> Dict[str, str]:
+        """Download all available files from a Browser Use API task."""
+        print(f"\n📥 Downloading all available files for task {task_id}...")
+        downloaded_files = {}
+        
+        # Create downloads directory
+        downloads_dir = f"task_{task_id}_files"
+        os.makedirs(downloads_dir, exist_ok=True)
+        print(f"📁 Files will be saved to: {downloads_dir}/")
+        
+        # 1. Try to download screenshots
+        try:
+            print("📸 Checking for screenshots...")
+            response = self.session.get(f"{self.api_base_url}/task/{task_id}/screenshots")
+            if response.status_code == 200:
+                screenshots_data = response.json()
+                if isinstance(screenshots_data, list) and screenshots_data:
+                    print(f"   Found {len(screenshots_data)} screenshots")
+                    for i, screenshot_url in enumerate(screenshots_data):
+                        screenshot_response = requests.get(screenshot_url)
+                        if screenshot_response.status_code == 200:
+                            filename = f"screenshot_{i+1}.png"
+                            filepath = os.path.join(downloads_dir, filename)
+                            with open(filepath, 'wb') as f:
+                                f.write(screenshot_response.content)
+                            downloaded_files[f"screenshot_{i+1}"] = filepath
+                            print(f"   ✅ Downloaded: {filename}")
+                elif isinstance(screenshots_data, dict) and screenshots_data.get('screenshots'):
+                    # Handle different response format
+                    screenshots = screenshots_data['screenshots']
+                    print(f"   Found {len(screenshots)} screenshots")
+                    for i, screenshot_url in enumerate(screenshots):
+                        screenshot_response = requests.get(screenshot_url)
+                        if screenshot_response.status_code == 200:
+                            filename = f"screenshot_{i+1}.png"
+                            filepath = os.path.join(downloads_dir, filename)
+                            with open(filepath, 'wb') as f:
+                                f.write(screenshot_response.content)
+                            downloaded_files[f"screenshot_{i+1}"] = filepath
+                            print(f"   ✅ Downloaded: {filename}")
+                else:
+                    print("   📸 No screenshots available")
+            else:
+                print(f"   ⚠️ Screenshots endpoint returned {response.status_code}")
+        except Exception as e:
+            print(f"   ❌ Error downloading screenshots: {e}")
+        
+        # 2. Try to download GIF recording
+        try:
+            print("🎬 Checking for GIF recording...")
+            response = self.session.get(f"{self.api_base_url}/task/{task_id}/gif")
+            if response.status_code == 200:
+                gif_data = response.json()
+                if gif_data.get('download_url'):
+                    gif_response = requests.get(gif_data['download_url'])
+                    if gif_response.status_code == 200:
+                        filename = "automation_recording.gif"
+                        filepath = os.path.join(downloads_dir, filename)
+                        with open(filepath, 'wb') as f:
+                            f.write(gif_response.content)
+                        downloaded_files["gif_recording"] = filepath
+                        print(f"   ✅ Downloaded: {filename}")
+                    else:
+                        print(f"   ⚠️ GIF download failed: {gif_response.status_code}")
+                else:
+                    print("   🎬 No GIF recording available")
+            else:
+                print(f"   ⚠️ GIF endpoint returned {response.status_code}")
+        except Exception as e:
+            print(f"   ❌ Error downloading GIF: {e}")
+        
+        # 3. Try to download media files
+        try:
+            print("🎥 Checking for media files...")
+            response = self.session.get(f"{self.api_base_url}/task/{task_id}/media")
+            if response.status_code == 200:
+                media_data = response.json()
+                if isinstance(media_data, list) and media_data:
+                    print(f"   Found {len(media_data)} media files")
+                    for i, media_url in enumerate(media_data):
+                        media_response = requests.get(media_url)
+                        if media_response.status_code == 200:
+                            # Try to determine file extension from URL or content-type
+                            content_type = media_response.headers.get('content-type', '')
+                            if 'video' in content_type:
+                                ext = '.mp4'
+                            elif 'image' in content_type:
+                                ext = '.png'
+                            else:
+                                ext = '.bin'
+                            
+                            filename = f"media_{i+1}{ext}"
+                            filepath = os.path.join(downloads_dir, filename)
+                            with open(filepath, 'wb') as f:
+                                f.write(media_response.content)
+                            downloaded_files[f"media_{i+1}"] = filepath
+                            print(f"   ✅ Downloaded: {filename}")
+                elif isinstance(media_data, dict) and media_data.get('media_files'):
+                    # Handle different response format
+                    media_files = media_data['media_files']
+                    print(f"   Found {len(media_files)} media files")
+                    for i, media_url in enumerate(media_files):
+                        media_response = requests.get(media_url)
+                        if media_response.status_code == 200:
+                            content_type = media_response.headers.get('content-type', '')
+                            if 'video' in content_type:
+                                ext = '.mp4'
+                            elif 'image' in content_type:
+                                ext = '.png'
+                            else:
+                                ext = '.bin'
+                            
+                            filename = f"media_{i+1}{ext}"
+                            filepath = os.path.join(downloads_dir, filename)
+                            with open(filepath, 'wb') as f:
+                                f.write(media_response.content)
+                            downloaded_files[f"media_{i+1}"] = filepath
+                            print(f"   ✅ Downloaded: {filename}")
+                else:
+                    print("   🎥 No media files available")
+            else:
+                print(f"   ⚠️ Media endpoint returned {response.status_code}")
+        except Exception as e:
+            print(f"   ❌ Error downloading media: {e}")
+        
+        # 4. Try to download specific output files by common names
+        common_output_files = [
+            "review_results.json",
+            "results.json", 
+            "output.json",
+            "report.json",
+            "data.csv",
+            "results.csv",
+            "output.txt",
+            "log.txt"
+        ]
+        
+        print("📄 Checking for specific output files...")
+        for filename in common_output_files:
+            try:
+                response = self.session.get(f"{self.api_base_url}/task/{task_id}/output-file/{filename}")
+                if response.status_code == 200:
+                    file_data = response.json()
+                    if file_data.get('download_url'):
+                        file_response = requests.get(file_data['download_url'])
+                        if file_response.status_code == 200:
+                            filepath = os.path.join(downloads_dir, filename)
+                            with open(filepath, 'wb') as f:
+                                f.write(file_response.content)
+                            downloaded_files[filename] = filepath
+                            print(f"   ✅ Downloaded: {filename}")
+            except Exception as e:
+                # Silently continue for missing files
+                pass
+        
+        # 5. Try the generic output file endpoint as fallback
+        try:
+            print("📋 Checking generic output file...")
+            response = self.session.get(f"{self.api_base_url}/get-task-output-file/{task_id}")
+            if response.status_code == 200:
+                try:
+                    # Try to parse as JSON first
+                    output_data = response.json()
+                    filename = "generic_output.json"
+                    filepath = os.path.join(downloads_dir, filename)
+                    with open(filepath, 'w', encoding='utf-8') as f:
+                        json.dump(output_data, f, indent=2, ensure_ascii=False)
+                    downloaded_files["generic_output"] = filepath
+                    print(f"   ✅ Downloaded: {filename}")
+                except json.JSONDecodeError:
+                    # Save as text file
+                    filename = "generic_output.txt"
+                    filepath = os.path.join(downloads_dir, filename)
+                    with open(filepath, 'w', encoding='utf-8') as f:
+                        f.write(response.text)
+                    downloaded_files["generic_output"] = filepath
+                    print(f"   ✅ Downloaded: {filename}")
+        except Exception as e:
+            print(f"   ❌ Error downloading generic output: {e}")
+        
+        if downloaded_files:
+            print(f"\n✅ Downloaded {len(downloaded_files)} files to {downloads_dir}/")
+            for file_type, filepath in downloaded_files.items():
+                file_size = os.path.getsize(filepath)
+                print(f"   📎 {file_type}: {os.path.basename(filepath)} ({file_size:,} bytes)")
+        else:
+            print(f"\n📭 No files were available for download")
+            
+        return downloaded_files
 
 async def main():
     """Main function to run the documentation reviewer."""
@@ -1214,14 +1542,30 @@ async def main():
             exhaustive=args.exhaustive
         )
         
-        # Save results to file
+        # Check for and display review_results.json file if it exists
+        reviewer.check_and_display_results_file()
+        
+        # Merge results with review_results.json if it exists
+        final_results = reviewer.merge_results_with_file(results)
+        
+        # Save final merged results to file
         mode_suffix = "exhaustive" if args.exhaustive else "limited"
         output_file = f"documentation_review_{args.approach}_{mode_suffix}_{int(time.time())}.json"
         with open(output_file, 'w', encoding='utf-8') as f:
-            json.dump(results, f, indent=2, ensure_ascii=False)
+            json.dump(final_results, f, indent=2, ensure_ascii=False)
         
         print(f"\n✅ Review completed!")
         print(f"📄 Full report saved to: {output_file}")
+        
+        # Use final_results for summary display
+        results = final_results
+        
+        # Display downloaded files if any
+        if "downloaded_files" in results and results["downloaded_files"]:
+            print(f"\n📥 Downloaded {len(results['downloaded_files'])} additional files:")
+            for file_type, filepath in results["downloaded_files"].items():
+                file_size = os.path.getsize(filepath) if os.path.exists(filepath) else 0
+                print(f"   📎 {file_type}: {os.path.basename(filepath)} ({file_size:,} bytes)")
         
         # Print summary
         if "error" not in results:

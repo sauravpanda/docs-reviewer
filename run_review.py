@@ -17,8 +17,8 @@ async def main():
     parser = argparse.ArgumentParser(description="AI Documentation Reviewer using Browser Use Cloud API")
     parser.add_argument("url", nargs="?", default="https://docs.browser-use.com/introduction", 
                        help="Documentation URL to review")
-    parser.add_argument("--max-pages", type=int, default=10, 
-                       help="Maximum number of pages to review (default: 10)")
+    parser.add_argument("--max-pages", type=int, default=50, 
+                       help="Maximum number of pages to review (default: 50)")
     parser.add_argument("--approach", choices=["one-shot", "multi-step"], default="multi-step",
                        help="Review approach: one-shot or multi-step (default: multi-step)")
     parser.add_argument("--exhaustive", action="store_true",

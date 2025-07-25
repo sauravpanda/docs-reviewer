@@ -1,0 +1,316 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Documentation Review Results</title>
+    <style>
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+            max-width: 1200px;
+            margin: 0 auto;
+            padding: 20px;
+            background-color: #0f0f0f;
+            color: #e2e8f0;
+        }
+        
+        h1 {
+            color: #f7fafc;
+            text-align: center;
+            margin-bottom: 30px;
+            border-bottom: 3px solid #ff6b35;
+            padding-bottom: 10px;
+        }
+        
+        .summary {
+            background: #1a1a1a;
+            padding: 20px;
+            border-radius: 10px;
+            box-shadow: 0 2px 4px rgba(0,0,0,0.3);
+            margin-bottom: 30px;
+            text-align: center;
+            border: 1px solid #2d2d2d;
+        }
+        
+        .file-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fill, minmax(400px, 1fr));
+            gap: 20px;
+        }
+        
+        .file-card {
+            background: #1a1a1a;
+            border-radius: 10px;
+            padding: 20px;
+            box-shadow: 0 2px 8px rgba(0,0,0,0.3);
+            transition: transform 0.2s, box-shadow 0.2s;
+            border-left: 4px solid #ff6b35;
+            border: 1px solid #2d2d2d;
+        }
+        
+        .file-card:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 4px 12px rgba(0,0,0,0.15);
+        }
+        
+        .file-card.error {
+            border-left-color: #e74c3c;
+        }
+        
+        .file-header {
+            display: flex;
+            justify-content: space-between;
+            align-items: start;
+            margin-bottom: 15px;
+        }
+        
+        .file-name {
+            font-weight: bold;
+            font-size: 16px;
+            color: #2c3e50;
+            word-break: break-word;
+        }
+        
+        .file-size {
+            font-size: 12px;
+            color: #7f8c8d;
+            white-space: nowrap;
+        }
+        
+        .file-meta {
+            margin-bottom: 15px;
+        }
+        
+        .meta-item {
+            margin-bottom: 8px;
+            font-size: 14px;
+        }
+        
+        .label {
+            font-weight: 600;
+            color: #34495e;
+        }
+        
+        .url {
+            color: #3498db;
+            word-break: break-all;
+            font-size: 13px;
+        }
+        
+        .stats {
+            display: flex;
+            justify-content: space-between;
+            background: #f8f9fa;
+            padding: 10px;
+            border-radius: 5px;
+            margin-bottom: 15px;
+        }
+        
+        .stat {
+            text-align: center;
+        }
+        
+        .stat-value {
+            font-weight: bold;
+            font-size: 18px;
+            color: #2c3e50;
+        }
+        
+        .stat-label {
+            font-size: 12px;
+            color: #7f8c8d;
+        }
+        
+        .score {
+            background: #27ae60;
+            color: white;
+            padding: 4px 8px;
+            border-radius: 4px;
+            font-weight: bold;
+        }
+        
+        .score.low {
+            background: #e74c3c;
+        }
+        
+        .score.medium {
+            background: #f39c12;
+        }
+        
+        .actions {
+            display: flex;
+            gap: 10px;
+        }
+        
+        .btn {
+            padding: 8px 16px;
+            border: none;
+            border-radius: 5px;
+            text-decoration: none;
+            font-size: 14px;
+            cursor: pointer;
+            transition: background-color 0.2s;
+            text-align: center;
+        }
+        
+        .btn-primary {
+            background: #3498db;
+            color: white;
+        }
+        
+        .btn-primary:hover {
+            background: #2980b9;
+        }
+        
+        .btn-secondary {
+            background: #95a5a6;
+            color: white;
+        }
+        
+        .btn-secondary:hover {
+            background: #7f8c8d;
+        }
+        
+        .error-msg {
+            color: #e74c3c;
+            font-style: italic;
+        }
+        
+        .timestamp {
+            color: #7f8c8d;
+            font-size: 12px;
+        }
+        
+        .no-files {
+            text-align: center;
+            padding: 40px;
+            color: #7f8c8d;
+        }
+        
+        .approach-badge {
+            display: inline-block;
+            padding: 2px 8px;
+            border-radius: 12px;
+            font-size: 11px;
+            font-weight: bold;
+            text-transform: uppercase;
+        }
+        
+        .approach-one-shot {
+            background: #e8f5e8;
+            color: #27ae60;
+        }
+        
+        .approach-multi-step {
+            background: #e8f0ff;
+            color: #3498db;
+        }
+        
+        .approach-exhaustive {
+            background: #fff3cd;
+            color: #856404;
+        }
+    </style>
+</head>
+<body>
+    <h1>📊 Documentation Review Results</h1>
+    
+    <div class="summary">
+        <h3>📂 Found {{ files|length }} Review Files</h3>
+        <p>Click on any file below to view the detailed review results in a pretty format.</p>
+    </div>
+    
+    {% if files %}
+        <div class="file-grid">
+            {% for file in files %}
+                <div class="file-card {% if file.get('error') or file.get('has_error') %}error{% endif %}">
+                    <div class="file-header">
+                        <div class="file-name">{{ file.filename }}</div>
+                        <div class="file-size">{{ file.size_kb }} KB</div>
+                    </div>
+                    
+                    {% if file.get('error') %}
+                        <div class="error-msg">⚠️ Error: {{ file.error }}</div>
+                    {% else %}
+                        <div class="file-meta">
+                            {% if file.start_url != 'Unknown' %}
+                                <div class="meta-item">
+                                    <span class="label">📍 Site:</span> 
+                                    <span class="url">{{ file.start_url }}</span>
+                                </div>
+                            {% endif %}
+                            
+                            {% if file.approach != 'Unknown' %}
+                                <div class="meta-item">
+                                    <span class="label">⚙️ Approach:</span>
+                                    <span class="approach-badge approach-{{ file.approach.replace('_', '-') }}">
+                                        {{ file.approach.replace('_', ' ') }}
+                                    </span>
+                                </div>
+                            {% endif %}
+                        </div>
+                        
+                        {% if file.pages_reviewed > 0 or file.pages_discovered > 0 %}
+                            <div class="stats">
+                                {% if file.pages_discovered > 0 %}
+                                    <div class="stat">
+                                        <div class="stat-value">{{ file.pages_discovered }}</div>
+                                        <div class="stat-label">Discovered</div>
+                                    </div>
+                                {% endif %}
+                                <div class="stat">
+                                    <div class="stat-value">{{ file.pages_reviewed }}</div>
+                                    <div class="stat-label">Reviewed</div>
+                                </div>
+                                {% if file.avg_score %}
+                                    <div class="stat">
+                                        <span class="score {% if file.avg_score >= 7 %}{% elif file.avg_score >= 5 %}medium{% else %}low{% endif %}">
+                                            {{ "%.1f"|format(file.avg_score) }}/10
+                                        </span>
+                                        <div class="stat-label">Average Score</div>
+                                    </div>
+                                {% endif %}
+                            </div>
+                        {% endif %}
+                        
+                        {% if file.has_error %}
+                            <div class="error-msg">⚠️ Review completed with errors</div>
+                        {% endif %}
+                        
+                        {% if file.get('has_ai_generated_file') %}
+                            <div style="background: #e8f8f5; color: #27ae60; padding: 8px; border-radius: 4px; font-size: 12px; margin-top: 10px;">
+                                🤖 Contains AI-generated analysis file
+                            </div>
+                        {% endif %}
+                        
+                        {% if file.get('downloaded_files') %}
+                            <div style="background: #e3f2fd; color: #1976d2; padding: 8px; border-radius: 4px; font-size: 12px; margin-top: 10px;">
+                                📸 Contains automation media files
+                            </div>
+                        {% endif %}
+                    {% endif %}
+                    
+                    <div class="timestamp">
+                        📅 {{ file.modified.strftime('%Y-%m-%d %H:%M') }}
+                    </div>
+                    
+                    <div class="actions">
+                        <a href="{{ url_for('view_file', filename=file.filename) }}" class="btn btn-primary">
+                            📖 View Pretty
+                        </a>
+                        <a href="{{ url_for('raw_file', filename=file.filename) }}" class="btn btn-secondary">
+                            📄 Raw JSON
+                        </a>
+                    </div>
+                </div>
+            {% endfor %}
+        </div>
+    {% else %}
+        <div class="no-files">
+            <h3>📭 No Review Files Found</h3>
+            <p>Run the documentation reviewer to generate some JSON files first!</p>
+            <code>python docs_reviewer.py https://your-docs-site.com</code>
+        </div>
+    {% endif %}
+</body>
+</html> 
